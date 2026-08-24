@@ -99,6 +99,13 @@ RSpec.describe WorkflowRun, :vcr do
         expect { subject }.to change { workflow_run.token.reload.enabled }.from(true).to(false)
       end
     end
+    context 'when the SCM responds with a token is expired message' do
+      subject { workflow_run.save_scm_report_failure('Failed to report back to GitLab: {"message":"401 Unauthorized - Token is expired"}', { api_endpoint: 'https://api.github.com' }) }
+
+      it 'disables the token of the token workflow' do
+        expect { subject }.to change { workflow_run.token.reload.enabled }.from(true).to(false)
+      end
+    end
   end
 
   describe '#labeled_pull_request?' do

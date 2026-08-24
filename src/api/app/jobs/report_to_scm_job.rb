@@ -13,17 +13,14 @@ class ReportToSCMJob < ApplicationJob
     GiteaAPI::V1::Client::InternalServerError,
     GiteaAPI::V1::Client::ServerError,
     GiteaAPI::V1::Client::ServiceUnavailableError,
-    GiteaAPI::V1::Client::UnauthorizedError,
     Gitlab::Error::BadGateway,
     Gitlab::Error::ConnectionTimedOut,
     Gitlab::Error::InternalServerError,
     Gitlab::Error::ServiceUnavailable,
-    Gitlab::Error::Unauthorized,
     Octokit::BadGateway,
     Octokit::InternalServerError,
     Octokit::ServerError,
-    Octokit::ServiceUnavailable,
-    Octokit::Unauthorized
+    Octokit::ServiceUnavailable
   ].freeze
   # Transient errors that are worth retrying, but with longer wait times
   RETRYABLE_LONG_WAIT_EXCEPTIONS = [GiteaAPI::V1::Client::TooManyRequestsError, Gitlab::Error::TooManyRequests, Octokit::TooManyRequests].freeze
@@ -36,6 +33,10 @@ class ReportToSCMJob < ApplicationJob
 
   RETRY_LONG_WAIT_TIMES = { 1 => 1.minute, 2 => 5.minutes, 3 => 10.minutes, 4 => 15.minutes, 5 => 30.minutes }.freeze
   retry_on(*RETRYABLE_LONG_WAIT_EXCEPTIONS, wait: ->(executions) { RETRY_LONG_WAIT_TIMES.fetch(executions) }, attempts: 6) do |job, error|
+    job.report_failure(error)
+  end
+
+  retry_on Gitlab::Error::Unauthorized, Octokit::Unauthorized, GiteaAPI::V1::Client::UnauthorizedError, attempts: 1 do |job, error|
     job.report_failure(error)
   end
 

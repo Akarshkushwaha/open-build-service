@@ -61,5 +61,18 @@ RSpec.describe ReportToSCMJob do
 
       it_behaves_like 'not reporting to the SCM'
     end
+
+    context 'when an unauthorized exception is raised dynamically by the status reporter' do
+      before do
+        event
+        event_subscription
+        allow_any_instance_of(GithubStatusReporter).to receive(:call).and_raise(Gitlab::Error::Unauthorized, '{"message":"401 Unauthorized - Token is expired"}') # rubocop:disable RSpec/AnyInstance
+      end
+
+      it 'aborts the job and immediately delegates to report_failure without bubbling up' do
+        expect_any_instance_of(ReportToSCMJob).to receive(:report_failure).once # rubocop:disable RSpec/AnyInstance
+        expect { subject }.not_to raise_error
+      end
+    end
   end
 end
